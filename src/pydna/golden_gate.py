@@ -17,13 +17,18 @@ def GoldenGateDesigner(seqs, enz):
             raise ValueError("All sequences must be linear")
     
     # Step 3: Check type and length of overhangs on dseqrecords
-    # type?
-
+    length_ovhg = 0
+    type_ovhg = ''
+    for seq in dseqrecords:
+        watson, crick, length = check_overhangs(seq)
+        if length > length_ovhg:
+            length_ovhg = length
+        type_ovhg = watson
 
     
     # Step 4: Select compatible enzymes
     compatible_enzymes = [enzyme for enzyme in enz if (enzyme.site == BsaI.site or enzyme.site == BsmBI.site)]
-    print(compatible_enzymes)
+    # print(compatible_enzymes)
     
     # Step 5: Check all amplicons for internal restriction sites, select Golden Gate enzymes that do not cut internally
     for amplicon in amplicons:
@@ -81,20 +86,16 @@ def GoldenGateAssembler(seqs, enz):
 def check_overhangs(dseqrecord):
     """
     This function checks the overhangs of a Dseqrecord object.
-    It assumes that the overhangs are located at the ends of the sequence.
     """
     # Get the Dseq object from the Dseqrecord
     dseq = dseqrecord.seq
+    length_ovhg = abs(dseq.ovhg)
     
     # Check for overhangs
-    print(dseq.watson, dseq.crick)
-    if len(dseq.watson) > len(dseq.crick):
-        print("5' overhang on top strand:", dseq.watson[len(dseq.crick):])
-    elif len(dseq.watson) < len(dseq.crick):
-        print("5' overhang on bottom strand:", dseq.crick[len(dseq.watson):])
+    w = dseq.watson[:length_ovhg]
+    c = dseq.crick[:length_ovhg]
 
-    return True
-
+    return w,c, length_ovhg
 
 
     
@@ -137,12 +138,7 @@ if __name__ == '__main__':
     # print(seq1.seq)
 
     # Check the overhangs
-    # five_prime_overhang, three_prime_overhang = check_overhangs(dseqrec)
-
-    # print("5' overhang:", five_prime_overhang)
-    # print("3' overhang:", three_prime_overhang)
-
-
+    
 
 
 
