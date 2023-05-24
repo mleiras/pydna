@@ -6,26 +6,6 @@ from Bio.Restriction import RestrictionBatch
 from pydna.assembly import Assembly
 import Bio.Seq as Seq
 
-def check_overhangs(dseqrec):
-    """
-    This function checks the overhangs of a Dseqrecord object.
-    It assumes that the overhangs are located at the ends of the sequence.
-    """
-    # Get the sequence as a string
-    print(dseqrec)
-    seq_str = str(dseqrec.seq)
-
-    # Check for 5' overhang
-    five_prime_overhang = seq_str.split(dseqrec.seq.watson)[0]
-
-
-    # Check for 3' overhang
-    three_prime_overhang = seq_str.split(dseqrec.seq.crick)[-1]
-
-    return five_prime_overhang, three_prime_overhang
-
-    
-
 def GoldenGateDesigner(seqs, enz):
     # Step 1: Divide input into Dseqrecords and amplicons
     dseqrecords = [seq for seq in seqs if isinstance(seq, Dseqrecord)]
@@ -37,6 +17,8 @@ def GoldenGateDesigner(seqs, enz):
             raise ValueError("All sequences must be linear")
     
     # Step 3: Check type and length of overhangs on dseqrecords
+    # type?
+
 
     
     # Step 4: Select compatible enzymes
@@ -95,6 +77,27 @@ def GoldenGateAssembler(seqs, enz):
     return result
 
 
+
+def check_overhangs(dseqrecord):
+    """
+    This function checks the overhangs of a Dseqrecord object.
+    It assumes that the overhangs are located at the ends of the sequence.
+    """
+    # Get the Dseq object from the Dseqrecord
+    dseq = dseqrecord.seq
+    
+    # Check for overhangs
+    print(dseq.watson, dseq.crick)
+    if len(dseq.watson) > len(dseq.crick):
+        print("5' overhang on top strand:", dseq.watson[len(dseq.crick):])
+    elif len(dseq.watson) < len(dseq.crick):
+        print("5' overhang on bottom strand:", dseq.crick[len(dseq.watson):])
+
+    return True
+
+
+
+    
 
 if __name__ == '__main__':
     # testar o codigo
