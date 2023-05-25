@@ -69,6 +69,8 @@ def GoldenGateDesigner(seqs, enz):
 
 def GoldenGateAssembler(seqs, enz):
 
+    # queremos todas as possibilidades de ligar os fragmentos (porque podem haver problemas no design dos fragmentos e este package serve para isso)
+
     # Step 1: Cut all Amplicons ## Porquê? Supostamente têm de vir já cortados, certo?
     
     
