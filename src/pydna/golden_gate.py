@@ -7,95 +7,83 @@ from pydna.assembly import Assembly
 import Bio.Seq as Seq
 
 def GoldenGateDesigner(seqs, enz):
-    # Step 1: Divide input into Dseqrecords and amplicons
+    # STEP 1: Divide input into Dseqrecords and amplicons
     dseqrecords = [seq for seq in seqs if isinstance(seq, Dseqrecord)]
     amplicons = [seq for seq in seqs if isinstance(seq, Amplicon)]
     
-    # Step 2: Verify that all sequences are linear
+    # STEP 2: Verify that all sequences are linear (apenas dseqrecords certo?)
     for seq in dseqrecords:
         if seq.circular:
             raise ValueError("All sequences must be linear")
     
-    # Step 3: Check type and length of overhangs on dseqrecords
-    length_ovhg = 0
-    type_ovhg = ''
-    for seq in dseqrecords:
-        watson, crick, length = check_overhangs(seq)
-        if length > length_ovhg:
-            length_ovhg = length
-        type_ovhg = watson
+    # STEP 3: Check type and length of overhangs on dseqrecords
+    overhangs = {}
 
+    for seq in dseqrecords:
+        dseq = seq.seq
+        length = abs(dseq.ovhg)
+        w = dseq.watson[:length]
+        # c = dseq.crick[:length]
+        overhangs[w] = length
+    # print(overhangs)
     
-    # Step 4: Select compatible enzymes
+    
+    # STEP 4: Select compatible enzymes
+
+    # check if type IIs restriction enzyme
+    # criar um dicionario com as enzimas de type IIS ? e permitir na lista apenas essas
     compatible_enzymes = [enzyme for enzyme in enz if (enzyme.site == BsaI.site or enzyme.site == BsmBI.site)]
-    # print(compatible_enzymes)
-    
-    # Step 5: Check all amplicons for internal restriction sites, select Golden Gate enzymes that do not cut internally
+
+    comp_enzymes = [] # se tiver o site da enzima em alguma sequencia, é adicionado a uma lista de enzimas final
+    for enzyme in compatible_enzymes:
+        for seq in dseqrecords: 
+            if enzyme.search(seq) is not None:
+                comp_enzymes.append(enzyme)
+        for seq in amplicons: 
+            if enzyme.search(seq) is not None:
+                comp_enzymes.append(enzyme)                
+
+
+    # STEP 5: Check all amplicons for internal restriction sites, select Golden Gate enzymes that do not cut internally
     for amplicon in amplicons:
-        for enzyme in compatible_enzymes:
-            if enzyme.search(amplicon.seq):
+        for enzyme in comp_enzymes:
+            if enzyme.search(amplicon.seq) is not None:
+                gg_enzyme = enzyme
                 print(enzyme.search(amplicon.seq))
                 # compatible_enzymes.remove(enzyme)
     
-    ### GOLDENHINGES package doesn't seem to work 
-    # Step 6: Use goldenhinges to design assembly fragments
-    # selector = OverhangsSelector()
-    # overhangs = selector.select_overhangs(dseqrecords)
+    # STEP 6: Use goldenhinges to design assembly fragments  ### GOLDENHINGES package doesn't seem to work 
 
-    # Step 7: Add appropriate tails to PCR primers of amplicons
-    for amplicon in amplicons:
-        # for overhang in overhangs:
-        #     if overhang[0] in amplicon.seq:
-        #         amplicon.forward_primer = Seq.Seq(overhang[1] + str(amplicon.forward_primer.seq))
-        #     if overhang[2] in amplicon.seq:
-        #         amplicon.reverse_primer = Seq.Seq(overhang[3] + str(amplicon.reverse_primer.seq))
-        if amplicon.forward_primer is not None:
-            amplicon.forward_primer = Seq(str(amplicon.forward_primer.seq))
-        if amplicon.reverse_primer is not None:
-            amplicon.reverse_primer = Seq(str(amplicon.reverse_primer.seq))
     
-    # Step 8: Return a list with Dseqrecords and amplicons
-    return dseqrecords + amplicons
+
+    # STEP 7: Add appropriate tails to PCR primers of amplicons
+    # overhangs tem de corresponder à ordem que queremos ligar os fragmentos (imagem artigo P1 liga-se ao amplicon, o P2 liga-se ao P3 e o P4 liga-se ao outro lado do amplicon)
+
+
+    lista = [] # lista dos fragmentos depois da enzima cortar (tem de ocorrer PCR aqui dentro?)
+
+
+    # STEP 8: Return a list with Dseqrecords and amplicons
+    return lista
 
 
 def GoldenGateAssembler(seqs, enz):
 
-    # Step 1: Cut all Amplicons
-    cut_seqs = []
-    for seq in seqs:
-        for enzyme in enz:
-            fragments = enzyme.catalyze(seq.seq if isinstance(seq, Dseqrecord) else seq)
-            cut_seqs.extend([Dseqrecord(frag) for frag in fragments])
-    print(cut_seqs)
+    # Step 1: Cut all Amplicons ## Porquê? Supostamente têm de vir já cortados, certo?
+    
     
     # Step 2: Try to add all sequences in order
-    assembly = Assembly(cut_seqs)
+    assembly = Assembly(seqs) # explicar melhor como funciona o Assembly no package
     print(assembly)
     try:
-        result = assembly.assemble_linear()
-        # result = assembly.assemble_circular()
+        # result = assembly.assemble_linear()
+        result = assembly.assemble_circular()
     except IndexError:
         # Step 3: If assembly not possible raise exception
         raise ValueError("Assembly not possible with provided sequences and enzymes")
     
     # Step 4: return Dseqrecord
     return result
-
-
-
-def check_overhangs(dseqrecord):
-    """
-    This function checks the overhangs of a Dseqrecord object.
-    """
-    # Get the Dseq object from the Dseqrecord
-    dseq = dseqrecord.seq
-    length_ovhg = abs(dseq.ovhg)
-    
-    # Check for overhangs
-    w = dseq.watson[:length_ovhg]
-    c = dseq.crick[:length_ovhg]
-
-    return w,c, length_ovhg
 
 
     
@@ -106,7 +94,7 @@ if __name__ == '__main__':
     from pydna.dseqrecord import Dseqrecord
     from pydna.amplicon import Amplicon
     from pydna.primer import Primer
-    from Bio.Restriction import BsaI, BsmBI, BamHI, EcoRI, HindIII
+    from Bio.Restriction import BsaI, BsmBI, BamHI
     from pydna.dseq import Dseq
     from pydna.seq import Seq
 
@@ -136,84 +124,3 @@ if __name__ == '__main__':
     print(c.figure())
 
     # print(seq1.seq)
-
-    # Check the overhangs
-    
-
-
-
-# if __name__ == '__main__':
-#     # testar o codigo
-#     from Bio.Seq import Seq
-#     from pydna.dseqrecord import Dseqrecord
-#     from pydna.amplicon import Amplicon
-#     from pydna.primer import Primer
-#     from Bio.Restriction import BsaI, BsmBI, EcoRI, HindIII
-#     from pydna.dseq import Dseq
-
-    # # Create some test sequences
-    # seq1 = Dseqrecord("ATGCGTACGTACGATCGTAGCTACGTACG")
-    # seq2 = Dseqrecord("ATGCGTACGTACGATCGTAGCTACGTACG")
-    # seq3 = Dseqrecord("ATGCGTACGTACGATCGTAGCTACGTACG")
-
-    # # Create some test amplicons
-    # primer1 = Primer("ATGCGTACGTACGATCGTAGCTACGTACG")
-    # primer2 = Primer("CGTACGTACGATCGTAGCTACGTACGCAT")
-    # amplicon1 = Amplicon(seq1, primer1, primer2)
-    # amplicon2 = Amplicon(seq2, primer1, primer2)
-
-    # # Create a list of sequences and enzymes
-    # seqs = [seq1, seq2, seq3, amplicon1, amplicon2]
-    # enz = [BsaI, BsmBI]
-
-    # result = GoldenGateDesigner(seqs, enz)
-
-    # # for res in result:
-    # #     print(res)
-
-    # print('\n GOLDENGATE ASSEMBLY')
-
-
-    # # Create some test sequences
-    
-
-    # # Test the function
-    # result2 = GoldenGateAssembler(result, [EcoRI, HindIII])
-    # print(result2)
-
-
-    ############################
-
-    # Create the fragments sequences
-    # fragment1 = Dseqrecord("ATGGTCTCAAGCTTACCGGTAAGCTTGGTCTCATG")
-    # fragment2 = Dseqrecord("ATGGTCTCAAGCTTACCGGTAAGCTTGGTCTCATG")
-
-    # # Create the destination vector
-    # amplicon = Amplicon('ATGCGTCTCAAGCTTACCGGTAGCTTGGTCTCGATGCGTCTCAAGCTTACCGGTAGCTTGGTCTCGATG')
-
-    # # Create a list of sequences and enzymes
-    # seqs = [amplicon, fragment1, fragment2]
-    # enz = [BsaI,BsmBI]
-
-    # result = GoldenGateDesigner(seqs, enz)
-
-    # print(result)
-
-    # for res in result:
-    #     print(res)
-
-    # print('\n GOLDENGATE ASSEMBLY')
-
-
-    # # Create some test sequences
-    
-
-    # # Test the function
-    # result2 = GoldenGateAssembler(result, [EcoRI, HindIII])
-    # print(result2,'\n')
-
-    #############
-
-    
-
-
