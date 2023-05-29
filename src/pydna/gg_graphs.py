@@ -1,6 +1,6 @@
 import networkx as nx
+from itertools import permutations, combinations
 from pydna.dseqrecord import Dseqrecord
-from pydna.dseq import Dseq
 from Bio.Restriction import BamHI, EcoRI, BsmBI # BamHI cuts GGATCC /// EcoRI cuts CTTAAG
 import io
 
@@ -20,28 +20,25 @@ def graph_assembly(list_seqs: list):
         graph
     '''
     G = nx.DiGraph()
-
-    for index, sequence in enumerate(list_seqs):
-        lista = list_seqs.copy()
-        lista.remove(sequence)
-        for i, seq in enumerate(lista):
-            try: 
-                new_seq = sequence + seq
-                node1 = index+1 #,sequence.figure().split('\n')[0][12:14]) # index da sequencia (na lista original) + tamanho da sequencia para referencia
-                node2 = list_seqs.index(seq)+1#,seq.figure().split('\n')[0][12:14])
-                G.add_node(node1, size = sequence.figure().split('\n')[0][12:14], dseq=sequence)
-                G.add_node(node2, size = seq.figure().split('\n')[0][12:14], dseq=seq)
-                G.add_edge(node1,node2, w=new_seq)
-            except:
-                pass
-
+    
+    for comb in permutations(list_seqs, 2):
+        seq1, seq2 = comb
+        try: 
+            seq1 + seq2
+        except:
+            continue
+        else:
+            node1 = list_seqs.index(seq1)+1
+            node2 = list_seqs.index(seq2)+1
+            G.add_node(node1, dseq=seq1)
+            G.add_node(node2, dseq=seq2)
+            G.add_edge(node1, node2)
+        
     if G.nodes:
         return G
     else:
         raise ValueError('Assembly not possible with these sequences')
     
-    
-
 
 def find_all_paths(graph):
     '''
@@ -76,13 +73,13 @@ def find_all_paths(graph):
             list of all the nodes included in the current path
         '''
         path = path + [start]
-        if start == end and len(path) > 1: #dif
+        if start == end and len(path) > 1:
             return [path]
         if start not in graph:
             return []
         paths = []
         for node in graph[start]:
-            if node not in path or (node == end): #dif
+            if node not in path or (node == end): 
                 newpaths = find_paths(node, end, path)
                 for newpath in newpaths:
                     paths.append(newpath)
@@ -103,33 +100,49 @@ def find_all_paths(graph):
 
 
 def find_paths_seqs(paths, grafo):
+    '''
+    find_paths_seqs is a function that returns a dictionary, the keys are all the paths in a graph and the values are the sequences assembled (for each path) 
+
+    Parameters
+    ----------
+    paths : list
+        list of lists of paths (sequences that can be assembled by that specific order)
+    grafo : _type_
+        graph that contains all the nodes and edges (sequences and possible assemblies between them)
+
+    Returns
+    -------
+    sequencias : dict
+        a dictionary, the keys are all the paths in a graph and the values are the sequences assembled (for each path) 
+    '''
     sequencias = {}
     for path in paths:
-        # print(path)
         soma = None
-        circular = False
+        circular = False # bool
         if len(set(path)) != len(path):
             circular = True
-        for i, seq in enumerate(list(set(path))):
-            
-            if i > len(list(set(path)))-1:
+        for i, seq in enumerate(list(set(path))): # se for circular não se pode repetir para juntar as sequencias 
+            if i > len(list(set(path)))-1: # quando chega ao fim da lista
                 break
-            if soma is None:
+            if soma is None: # quando está no inicio do path
                 soma = grafo.nodes[seq]['dseq']
-                # print('soma inicial',i, soma)
-            else:
-                # print()
-                # print('i',i,  grafo.nodes[seq])
-                # print('i', grafo.nodes[seq+1])
+            else: # continua no path e ir somando à sequencia existente
                 soma += grafo.nodes[seq]['dseq']
-        # print('SOMA', soma.figure())
-        # print(soma)
+
         if circular:
             soma = Dseqrecord(soma, circular=True)
 
         sequencias[(tuple(path))] = soma
 
-    # print(sequencias)
+    # complementar com calculadora seguid para eliminar sequencias repetidas (alguns paths acabam por ser iguais, ciruclares) 
+    # se seguid não der:
+    repetidos = [] # retirar sequencias iguais
+    for comb in combinations(sequencias.items(), 2):
+        if comb[0][1] == comb[1][1] and comb[1] not in repetidos:
+            repetidos.append(comb[1])
+    for i in repetidos:
+        sequencias.pop(i[0])
+
     return sequencias
 
 
@@ -162,49 +175,20 @@ def to_graphviz(g):
         print("}", file = F)
         return F.getvalue()
         
-# pprint.pprint(g)
 
 
 if __name__ == '__main__':
+    print()
 
     a = Dseqrecord("CTTAAGatgccctaaccccGAATTC")
     b = Dseqrecord("GAATTCatgccctaaccccGAATTC")
     c = Dseqrecord("GAATTCatgcccgggggggggggccCTTAAG")
-    # print(a.figure())
-    # print(b.figure())
-    # print(c.figure()) 
 
     s1,a2  = a.cut(EcoRI)
     b1,s2,b3 = b.cut(EcoRI)
     c1,s3 = c.cut(EcoRI)
-    # d = Dseqrecord("CTTAAGatgccctttttttGAATTC")
-    # s4,d2 = d.cut(EcoRI)
-
-    # só funciona com Dseq (em vez de Dseqrecord):
-    # print('5', s1.five_prime_end())
-    # print('3', s1.three_prime_end())
-    # print()
-
-    # print(s1.figure())
-    # print()
-    # print(s2.figure())
-    # print()
-    # print(s3.figure())
-    # print()
-
-    # d = s1+s2+s3
-    # e = s1+s3
-    # print(d.figure())
-    # print(e.figure())
-    # print(repr(s1))
-    # print()
-    # print(repr(s2))
-    # print()
-    # print(repr(s3))
-    # print()
     
-    # lista_seqs = [s1,s2,s3]
-    lista_seqs = [s1,s1]
+    lista_seqs = [s1,s2,s3]
 
     grafo = graph_assembly(lista_seqs)
     # print(grafo)
@@ -212,11 +196,8 @@ if __name__ == '__main__':
     # print('Edges: ', grafo.edges)
 
     # print()
-
-    # print()
     # print(to_graphviz(grafo))
 
-    # print('All the paths on the graph: ')
     paths = find_all_paths(grafo)
     # print()
     # for path in find_all_paths(grafo):
@@ -228,6 +209,4 @@ if __name__ == '__main__':
         print(i)
         print(x.figure())
 
-    # print(unique_paths(paths, grafo))
-    # print(grafo.nodes[0]['dseq']) # forma de aceder à informação toda da sequencia em questão
-
+    

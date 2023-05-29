@@ -7,7 +7,11 @@ from pydna.assembly import Assembly
 import Bio.Seq as Seq
 from gg_graphs import *
 
+
 def GoldenGateDesigner(seqs, enz):
+
+
+        
     # STEP 1: Divide input into Dseqrecords and amplicons
     dseqrecords = [seq for seq in seqs if isinstance(seq, Dseqrecord)]
     amplicons = [seq for seq in seqs if isinstance(seq, Amplicon)]
@@ -70,37 +74,18 @@ def GoldenGateDesigner(seqs, enz):
     return lista
 
 
-def GoldenGateAssembler(seqs, enz):
+def GoldenGateAssembler(seqs):
 
-    # queremos todas as possibilidades de ligar os fragmentos (porque podem haver problemas no design dos fragmentos e este package serve para isso)
-
-    # Step 1: Cut all Amplicons
-    # amplicons, dseqrecords = seqs
-    amplicons = seqs
-    # passar por todas as sequencias com todas as enzimas até cortar?
-    for amp in amplicons:
-        for enzyme in enz:
-            amp1 = amp.cut(enzyme) # tem de ser com o try (não vai cortar com qualquer enzima)
-    
-            seqs.extend(amp1)
-    
-    
-    # Step 2: Try to add all sequences in order
     graph = graph_assembly(seqs)
     paths = find_all_paths(graph)
     dic_paths = find_paths_seqs(paths, graph)
-    for i,x in dic_paths.items():
-        print(i)
-        print(x.figure())
-
-
-    # Step 4: return Dseqrecord # ou vários?
-    # return result
-
+     
+    return dic_paths
 
     
 
 if __name__ == '__main__':
+    print()
     # testar o codigo
     from Bio.Seq import Seq
     from pydna.dseqrecord import Dseqrecord
@@ -145,7 +130,24 @@ if __name__ == '__main__':
     b1,s2,b3 = b.cut(EcoRI)
     c1,s3 = c.cut(EcoRI)
     
-    lista_seqs = [a,b,c]
+    lista_seqs = [s1,s2,s3]
 
-    GoldenGateAssembler(lista_seqs, [EcoRI])
+    print(GoldenGateAssembler(lista_seqs))
+
+
+    import goldenhinges
+    from goldenhinges import OverhangsSelector
+
+    selector = OverhangsSelector(
+        gc_min=0.25,
+        gc_max=0.5,
+        differences=2,
+        forbidden_overhangs=['ATGC', 'CCGA']
+    )
+    overhangs = selector.generate_overhangs_set()
+    print (overhangs)
+
+    overhangs = selector.generate_overhangs_set(n_cliques=5000)
+
+
 
