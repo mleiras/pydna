@@ -12,7 +12,7 @@ def graph_assembly(list_seqs: list):
     Parameters
     ----------
     list_seqs : list
-        list of sequences with sticky ends for assembly
+        list of the sorted sequences with sticky ends for assembly (order is important)
 
     Returns
     -------
