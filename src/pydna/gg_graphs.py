@@ -34,7 +34,13 @@ def graph_assembly(list_seqs: list):
                 G.add_edge(node1,node2, w=new_seq)
             except:
                 pass
-    return G
+
+    if G.nodes:
+        return G
+    else:
+        raise ValueError('Assembly not possible with these sequences')
+    
+    
 
 
 def find_all_paths(graph):
@@ -197,7 +203,8 @@ if __name__ == '__main__':
     # print(repr(s3))
     # print()
     
-    lista_seqs = [s1,s2,s3]
+    # lista_seqs = [s1,s2,s3]
+    lista_seqs = [s1,s1]
 
     grafo = graph_assembly(lista_seqs)
     # print(grafo)
