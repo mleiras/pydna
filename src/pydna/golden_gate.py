@@ -13,8 +13,8 @@ def GoldenGateDesigner(seqs, enzs):
 
     # STEP 0
     # list all sticky ends...
-    sticky_ends_dict = {}
-    sticky_ends = []
+    sticky_ends_dict = {} # com dicionario dá para ver sticky ends de cada sequencia (ou blunt)
+    sticky_ends = [] # só para registar diferentes tipos de stiky ends (sem repetir e não por ordem, nem blunts)
     for sequence in seqs:
         end_5 = sequence.seq.five_prime_end()
         end_3 = sequence.seq.three_prime_end()
@@ -33,7 +33,7 @@ def GoldenGateDesigner(seqs, enzs):
 
     sticky_ends = list(set(sticky_ends))
     print(sticky_ends_dict)
-    print(sticky_ends)
+    # print(sticky_ends)
 
 
     # STEP 1
@@ -46,39 +46,102 @@ def GoldenGateDesigner(seqs, enzs):
                 compatible_enzymes.remove(e)
                 break
 
-    print(compatible_enzymes)
+    # print(compatible_enzymes)
 
     # STEP 2
     # loop over pairs of seqs
 
+    # função auxiliar
+    def design_relevant_primer(seq, ovhg = None, end=5):
+        primers = primer_design(seq)
+        # print('teste primer')
+        if ovhg is None:
+            ovhg = 'aatt'# temporario # goldenhinges para forbidden sticky ends      
+        if end == 5:
+            seq = Amplicon(seq, forward_primer=(ovhg+primers.forward_primer))
+            # print(seq)
+        elif end == 3:
+            seq = Amplicon(seq, reverse_primer=(ovhg+primers.reverse_primer))
+            # print(seq)
+        else:
+            print('ERRO')
+
+        # print('primer design')
+        # print(seq)
+        
+        return seq
+
     new_seqs = []
 
     for ind in range(len(seqs)-1): # index da sequencia na lista (até ao penultimo)
+        print(ind)
         # print(ind, ind+1)
-        if isinstance(seqs[ind], Dseqrecord) and isinstance(seqs[ind+1], Dseqrecord):
-            # 2 dseqrecords - não acontece nada as sequencias
-            # print('dseqrecords')
+        print(sticky_ends_dict[ind][1], sticky_ends_dict[ind+1][0])
+        if sticky_ends_dict[ind][1] == 'blunt' and sticky_ends_dict[ind+1][0] == 'blunt': ## 2 blunts (2 primers)
+            print('blunt test')
+            amp = design_relevant_primer(seqs[ind]) ## goldenhinges ??
+            new_seqs.append(amp)
+            # amp2 = design_relevant_primer(seqs[ind+1], end=3)
+            # new_seqs.append(amp2)
+
+        elif sticky_ends_dict[ind][1] != 'blunt' and sticky_ends_dict[ind+1][0] != 'blunt': ## dseq + dseq
+            print('dseq + dseq test')
             new_seqs.append(seqs[ind])
-        elif isinstance(seqs[ind], Amplicon) and isinstance(seqs[ind+1], Amplicon):
-            # 2 primers
-            # print('amplicons')
-            design_relevant_primer(seqs[ind], seqs[ind+1])
-        elif isinstance(seqs[ind], Amplicon) and isinstance(seqs[ind+1], Dseqrecord):
-            design_relevant_primer(seqs[ind], seqs[ind+1])
-        else: # dseq + amp
-            pass
+
+        elif sticky_ends_dict[ind][1] == 'blunt' and sticky_ends_dict[ind+1][0] != 'blunt': ## blunt + dseq
+            print('blunt + dseq test')
+            # print(seqs[ind])
+            ovhg = sticky_ends_dict[ind+1][0]
+            print('ovhg: ', ovhg)
+            amp = design_relevant_primer(seqs[ind], ovhg = ovhg, end=5)
+            new_seqs.append(amp)
+
+        elif sticky_ends_dict[ind][1] != 'blunt' and sticky_ends_dict[ind+1][0] == 'blunt': ## dseq + blunt
+            print('dseq + blunt test')
+            # print(seqs[ind])
+            ovhg = sticky_ends_dict[ind][1]
+            print('ovhg: ', ovhg)
+            amp = design_relevant_primer(seqs[ind+1], ovhg = ovhg, end=3)
+            new_seqs.append(amp)
+
+        else: 
+            print('ERRO')
+
+        
+
+        
+
+        # if isinstance(seqs[ind], Dseqrecord) and isinstance(seqs[ind+1], Dseqrecord):
+        #     # 2 dseqrecords - não acontece nada as sequencias
+        #     # print('dseqrecords')
+        #     new_seqs.append(seqs[ind])
+        # elif isinstance(seqs[ind], Amplicon) and isinstance(seqs[ind+1], Amplicon):
+        #     # 2 primers
+        #     # print('amplicons')
+        #     amp = design_relevant_primer(seqs[ind])
+        #     new_seqs.append(amp)
+        # elif isinstance(seqs[ind], Dseqrecord) and isinstance(seqs[ind+1], Amplicon):
+        #     new_seqs.append(seqs[ind])
+        #     # fazer primer na segunda seq?
+        #     design_relevant_primer(seqs[ind], seqs[ind+1])
+        # else: # amp + dseq
+        #     pass
             # print('teste amp + dseqrecord')
+
+    print(new_seqs)
     
     # STEP 3
     # design relevant primer if needed (add enzyme and comp sticky end)
     
-    def design_relevant_primer(seq, forbidden_ends = sticky_ends): # forbidden ends -> goldenhinges package
-        ampl = primer_design(seq)
-        
-        return seq
+    
     
     # STEP 4
     # if two amplicons, design both relevant primers (lista sticky ends serve aqui)
+    def design_relevant_primers(seq, forbidden_ends = sticky_ends): # forbidden ends -> goldenhinges package
+        
+        ampl = primer_design(seq)
+        
+        return seq
     
     
     # STEP 5
@@ -218,9 +281,11 @@ if __name__ == '__main__':
 
     # print(seq1.seq)
 
-    a = Dseqrecord("CTTAAGatgccctaaccccGAATTC")
-    b = Dseqrecord("CTGGAGatgccctaaccccCTGGAG")
-    c = Dseqrecord("GAATTCatgcccgggggggggggccCTTAAG")
+    a = Dseqrecord("CTTAAGatgccctaaccccccctaacccacGAATTC")
+    b = Dseqrecord("CTGGAGatgccctaaccatgtagtaaaaaaatgccGAATTC")
+    b3 = Dseqrecord("CTGGAGatgccctaaccatgtagtatgccCTGGAG")
+    b2 = Dseqrecord("CTGGAGatgccctaaccccaggaattagagCTGGAG")
+    c = Dseqrecord("GAATTCatgcccgggggggggggcagtacagtaCTTAAG")
     d = Dseqrecord("atgactgctaacccttccttggtgttgaacaagatcgacgacatttcgttcgaaacttacgatg")
     ampl = primer_design(d)
     ampl.figure()
@@ -236,14 +301,18 @@ if __name__ == '__main__':
     # print(b.cut(EcoRI))
 
     s1,a2  = a.cut(EcoRI)
-    # b1,s2,b3 = b.cut(EcoRI)
-    b1,s2 = b.cut(BpmI)
+    s2, b1 = b.cut(EcoRI)
+    # b1,s2 = b2.cut(BpmI)
     # print(s2.figure())
     c1,s3 = c.cut(EcoRI)
     
     lista = [a,b,c]
+    # lista_seqs = [s1,b2,s3]
 
-    lista_seqs = [a,s1,b1,s3]
+    lista_seqs = [s1,s2,s3]
+
+    # ampl = primer_design(a)
+    # print(ampl.figure())
 
     print(GoldenGateAssembler(lista_seqs))
     print()
