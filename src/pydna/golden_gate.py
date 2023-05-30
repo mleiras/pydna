@@ -51,38 +51,59 @@ def GoldenGateDesigner(seqs, enzs):
     # STEP 2
     # loop over pairs of seqs
 
-    # função auxiliar
+    # STEP 3 
+    # design relevant primer if needed (add enzyme and comp sticky end)
+    # FUNÇÃO AUXILIAR para loop do step 2
+    
+    
     def design_relevant_primer(seq, ovhg = None, end=5):
         primers = primer_design(seq)
         # print('teste primer')
         if ovhg is None:
             ovhg = 'aatt'# temporario # goldenhinges para forbidden sticky ends      
         if end == 5:
-            seq = Amplicon(seq, forward_primer=(ovhg+primers.forward_primer))
+            seq = Amplicon(seq, forward_primer=(compatible_enzymes[0].site+ovhg+primers.forward_primer))
             # print(seq)
         elif end == 3:
-            seq = Amplicon(seq, reverse_primer=(ovhg+primers.reverse_primer))
+            seq = Amplicon(seq, reverse_primer=(compatible_enzymes[0].site+ovhg+primers.reverse_primer))
             # print(seq)
         else:
             print('ERRO')
 
         # print('primer design')
-        # print(seq)
+        print(seq)
         
         return seq
 
     new_seqs = []
 
-    for ind in range(len(seqs)-1): # index da sequencia na lista (até ao penultimo)
+    for ind in range(len(seqs)): # index da sequencia na lista (até ao penultimo)
+        if ind == len(seqs)-1:
+            print('teste')
+            new_seqs.append(seqs[ind])
+
+            break
         print(ind)
+
+        # if ind == 0 and sticky_ends_dict[0][1] == 'blunt':
+        #     amp = design_relevant_primer(seqs[0]) ## goldenhinges ??
+        #     new_seqs.append(amp)
+        #     amp2 = design_relevant_primer(seqs[ind+1], end=3) # mas depois tem de atualizar na lista na proxima iteração -- como?
+        #     new_seqs.append(amp2)
+        #     continue
+        # elif ind == 0 and sticky_ends_dict[0][1] != 'blunt':
+        #     new_seqs.append(seq[0])
+        #     continue
         # print(ind, ind+1)
+
         print(sticky_ends_dict[ind][1], sticky_ends_dict[ind+1][0])
+
         if sticky_ends_dict[ind][1] == 'blunt' and sticky_ends_dict[ind+1][0] == 'blunt': ## 2 blunts (2 primers)
             print('blunt test')
             amp = design_relevant_primer(seqs[ind]) ## goldenhinges ??
-            new_seqs.append(amp)
-            # amp2 = design_relevant_primer(seqs[ind+1], end=3)
-            # new_seqs.append(amp2)
+            new_seqs.append(amp) ## primeira sequencia
+            amp2 = design_relevant_primer(seqs[ind+1], end=3) # mas depois tem de atualizar na lista na proxima iteração -- como?
+            new_seqs.append(amp2)
 
         elif sticky_ends_dict[ind][1] != 'blunt' and sticky_ends_dict[ind+1][0] != 'blunt': ## dseq + dseq
             print('dseq + dseq test')
@@ -107,9 +128,6 @@ def GoldenGateDesigner(seqs, enzs):
         else: 
             print('ERRO')
 
-        
-
-        
 
         # if isinstance(seqs[ind], Dseqrecord) and isinstance(seqs[ind+1], Dseqrecord):
         #     # 2 dseqrecords - não acontece nada as sequencias
@@ -130,9 +148,6 @@ def GoldenGateDesigner(seqs, enzs):
 
     print(new_seqs)
     
-    # STEP 3
-    # design relevant primer if needed (add enzyme and comp sticky end)
-    
     
     
     # STEP 4
@@ -147,7 +162,7 @@ def GoldenGateDesigner(seqs, enzs):
     # STEP 5
     # Return a list with Dseqrecords and amplicons
 
-    # return new_seqs
+    return new_seqs
 
 
 
@@ -287,14 +302,8 @@ if __name__ == '__main__':
     b2 = Dseqrecord("CTGGAGatgccctaaccccaggaattagagCTGGAG")
     c = Dseqrecord("GAATTCatgcccgggggggggggcagtacagtaCTTAAG")
     d = Dseqrecord("atgactgctaacccttccttggtgttgaacaagatcgacgacatttcgttcgaaacttacgatg")
-    ampl = primer_design(d)
-    ampl.figure()
-
-
-    # print(a.figure())
-    # print()
-    # print(d.figure())
-
+    # ampl = primer_design(d)
+    # ampl.figure()
 
     lista_enz = [EcoRI, BsaI, BsmBI, BamHI, BpmI]
     
@@ -310,7 +319,9 @@ if __name__ == '__main__':
     # lista_seqs = [s1,b2,s3]
 
     lista_seqs = [s1,s2,s3]
-
+    for i in lista_seqs:
+        print(i.figure())
+        
     # ampl = primer_design(a)
     # print(ampl.figure())
 
@@ -319,6 +330,18 @@ if __name__ == '__main__':
 
     # print(GoldenGateDesigner(lista, lista_enz))
     print(GoldenGateDesigner(lista_seqs, lista_enz))
+    lista_gg = GoldenGateDesigner(lista_seqs, lista_enz)
+    print()
+    for i in lista_gg:
+        print(lista_gg.index(i))
+        print(i)
+
+    print()
+    print(GoldenGateAssembler(lista_gg))
+    print()
+
+
+    
 
 
 
