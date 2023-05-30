@@ -1,7 +1,7 @@
 import networkx as nx
 from itertools import permutations, combinations
 from pydna.dseqrecord import Dseqrecord
-from Bio.Restriction import BamHI, EcoRI, BsmBI # BamHI cuts GGATCC /// EcoRI cuts CTTAAG
+from Bio.Restriction import BamHI, EcoRI, BsmBI, BpmI # BamHI cuts GGATCC /// EcoRI cuts CTTAAG
 import io
 
 
@@ -121,8 +121,9 @@ def find_paths_seqs(paths, grafo):
         circular = False # bool
         if len(set(path)) != len(path):
             circular = True
-        for i, seq in enumerate(list(set(path))): # se for circular não se pode repetir para juntar as sequencias 
-            if i > len(list(set(path)))-1: # quando chega ao fim da lista
+            path.pop()
+        for i, seq in enumerate(path): # se for circular não se pode repetir para juntar as sequencias 
+            if i >= len(list(set(path))): # quando chega ao fim da lista
                 break
             if soma is None: # quando está no inicio do path
                 soma = grafo.nodes[seq]['dseq']
@@ -135,15 +136,26 @@ def find_paths_seqs(paths, grafo):
         sequencias[(tuple(path))] = soma
 
     # complementar com calculadora seguid para eliminar sequencias repetidas (alguns paths acabam por ser iguais, ciruclares) 
-    # se seguid não der:
-    repetidos = [] # retirar sequencias iguais
-    for comb in combinations(sequencias.items(), 2):
-        if comb[0][1] == comb[1][1] and comb[1] not in repetidos:
-            repetidos.append(comb[1])
-    for i in repetidos:
-        sequencias.pop(i[0])
+    #### AQUI: retorna 4 seqs (sequencias unicas)
+    dicio = sequencias.copy()
 
-    return sequencias
+    for comb in combinations(sequencias.items(), 2):
+        if comb[0][1].useguid() == comb[1][1].useguid():
+            if comb[0][0] in dicio:
+                dicio.pop(comb[0][0])
+    
+    # se seguid não der:
+    #### AQUI: retorna 6 itens (circulares e não circulares, no fundo com a mesma sequência)
+    # repetidos = [] # retirar sequencias iguais
+    # for comb in combinations(sequencias.items(), 2):
+    #     if comb[0][1] == comb[1][1] and comb[1] not in repetidos:
+    #         repetidos.append(comb[1])
+    # for i in repetidos:
+    #     sequencias.pop(i[0])
+
+    # return sequencias
+
+    return dicio
 
 
 def to_graphviz(g):
@@ -208,5 +220,3 @@ if __name__ == '__main__':
     for i,x in dic_paths.items():
         print(i)
         print(x.figure())
-
-    
