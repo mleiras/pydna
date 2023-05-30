@@ -11,10 +11,35 @@ from gg_graphs import *
 
 def GoldenGateDesigner(seqs, enzs):
 
+    # STEP 0
+    # list all sticky ends...
+    sticky_ends_dict = {}
+    sticky_ends = []
+    for sequence in seqs:
+        end_5 = sequence.seq.five_prime_end()
+        end_3 = sequence.seq.three_prime_end()
+        sticky_ends_dict[seqs.index(sequence)] = []
+        if end_5[0] == 'blunt':
+            sticky_ends_dict[seqs.index(sequence)].append((end_5[0])) # blunt
+        else:
+            sticky_ends_dict[seqs.index(sequence)].append((end_5[1])) # overhang
+
+            sticky_ends.append(end_5[1]) # será preciso saber a ponta 5 ou 3?
+        if end_3[0] == 'blunt':
+            sticky_ends_dict[seqs.index(sequence)].append((end_3[0])) # blunt
+        else:
+            sticky_ends_dict[seqs.index(sequence)].append((end_3[1])) # overhang
+            sticky_ends.append(end_3[1])
+
+    sticky_ends = list(set(sticky_ends))
+    print(sticky_ends_dict)
+    print(sticky_ends)
+
+
     # STEP 1
     # compatible enzymes (enzymes that do not cut within the sequences)
     compatible_enzymes = enzs.copy()
-   
+    
     for e in enzs:
         for seq in seqs:
             if e.search(seq.seq) != []:
@@ -22,6 +47,44 @@ def GoldenGateDesigner(seqs, enzs):
                 break
 
     print(compatible_enzymes)
+
+    # STEP 2
+    # loop over pairs of seqs
+
+    new_seqs = []
+
+    for ind in range(len(seqs)-1): # index da sequencia na lista (até ao penultimo)
+        # print(ind, ind+1)
+        if isinstance(seqs[ind], Dseqrecord) and isinstance(seqs[ind+1], Dseqrecord):
+            # 2 dseqrecords - não acontece nada as sequencias
+            # print('dseqrecords')
+            new_seqs.append(seqs[ind])
+        elif isinstance(seqs[ind], Amplicon) and isinstance(seqs[ind+1], Amplicon):
+            # 2 primers
+            # print('amplicons')
+            design_relevant_primer(seqs[ind], seqs[ind+1])
+        elif isinstance(seqs[ind], Amplicon) and isinstance(seqs[ind+1], Dseqrecord):
+            design_relevant_primer(seqs[ind], seqs[ind+1])
+        else: # dseq + amp
+            pass
+            # print('teste amp + dseqrecord')
+    
+    # STEP 3
+    # design relevant primer if needed (add enzyme and comp sticky end)
+    
+    def design_relevant_primer(seq, forbidden_ends = sticky_ends): # forbidden ends -> goldenhinges package
+        ampl = primer_design(seq)
+        
+        return seq
+    
+    # STEP 4
+    # if two amplicons, design both relevant primers (lista sticky ends serve aqui)
+    
+    
+    # STEP 5
+    # Return a list with Dseqrecords and amplicons
+
+    # return new_seqs
 
 
 
@@ -38,6 +101,7 @@ def GoldenGateDesigner(seqs, enzs):
     
     # STEP 3: Check type and length of overhangs on dseqrecords
     # overhangs = {}
+    # print(dseqrecords)
 
     # for seq in dseqrecords:
     #     dseq = seq.seq
@@ -155,24 +219,37 @@ if __name__ == '__main__':
     # print(seq1.seq)
 
     a = Dseqrecord("CTTAAGatgccctaaccccGAATTC")
-    b = Dseqrecord("GAATTCatgccctaaccccGAATTC")
+    b = Dseqrecord("CTGGAGatgccctaaccccCTGGAG")
     c = Dseqrecord("GAATTCatgcccgggggggggggccCTTAAG")
+    d = Dseqrecord("atgactgctaacccttccttggtgttgaacaagatcgacgacatttcgttcgaaacttacgatg")
+    ampl = primer_design(d)
+    ampl.figure()
 
-    lista_enz = [EcoRI, BsaI, BsmBI, BamHI]
+
+    # print(a.figure())
+    # print()
+    # print(d.figure())
+
+
+    lista_enz = [EcoRI, BsaI, BsmBI, BamHI, BpmI]
+    
+    # print(b.cut(EcoRI))
 
     s1,a2  = a.cut(EcoRI)
-    b1,s2,b3 = b.cut(EcoRI)
+    # b1,s2,b3 = b.cut(EcoRI)
+    b1,s2 = b.cut(BpmI)
+    # print(s2.figure())
     c1,s3 = c.cut(EcoRI)
     
     lista = [a,b,c]
 
-    lista_seqs = [s1,s2,s3]
+    lista_seqs = [a,s1,b1,s3]
 
     print(GoldenGateAssembler(lista_seqs))
     print()
 
-    print(GoldenGateDesigner(lista, lista_enz))
-
+    # print(GoldenGateDesigner(lista, lista_enz))
+    print(GoldenGateDesigner(lista_seqs, lista_enz))
 
 
 
