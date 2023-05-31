@@ -220,3 +220,86 @@ if __name__ == '__main__':
     for i,x in dic_paths.items():
         print(i)
         print(x.figure())
+
+
+# def graph_assembly(list_seqs: list):
+
+#     G = nx.DiGraph()
+    
+#     for comb in permutations(list_seqs, 2):
+#         seq1, seq2 = comb
+#         try: 
+#             seq1 + seq2
+#         except:
+#             continue
+#         else:
+#             node1 = list_seqs.index(seq1)+1
+#             node2 = list_seqs.index(seq2)+1
+#             G.add_node(node1, dseq=seq1)
+#             G.add_node(node2, dseq=seq2)
+#             G.add_edge(node1, node2)
+        
+#     if G.nodes:
+#         return G
+#     else:
+#         raise ValueError('Assembly not possible with these sequences')
+    
+
+# def find_all_paths(graph):
+
+#     def find_paths(start, end, path=[]):
+#         path = path + [start]
+#         if start == end and len(path) > 1:
+#             return [path]
+#         if start not in graph:
+#             return []
+#         paths = []
+#         for node in graph[start]:
+#             if node not in path or (node == end): 
+#                 newpaths = find_paths(node, end, path)
+#                 for newpath in newpaths:
+#                     paths.append(newpath)
+#         return paths
+
+#     all_paths = []
+#     for start in graph:
+#         for end in graph:
+#             if start != end:
+#                 paths = find_paths(start, end)
+#                 all_paths.extend(paths)
+
+#         # Add circular paths
+#         circular_paths = find_paths(start, start)
+#         all_paths.extend(circular_paths)
+
+#     return all_paths
+
+
+
+# def find_paths_seqs(paths, graph):
+#     sequences = {}
+#     for path in paths:
+#         new_seq = None
+#         circular = False 
+#         if len(set(path)) != len(path):
+#             circular = True
+#             path.pop()
+#         for i, seq in enumerate(path): 
+#             if i >= len(list(set(path))): 
+#                 break
+#             if new_seq is None:
+#                 new_seq = graph.nodes[seq]['dseq']
+#             else: 
+#                 new_seq += graph.nodes[seq]['dseq']
+#         if circular:
+#             new_seq = Dseqrecord(new_seq, circular=True)
+
+#         sequences[(tuple(path))] = new_seq
+
+#     s_dict = sequences.copy()
+#     for comb in combinations(sequences.items(), 2):
+#         if comb[0][1].useguid() == comb[1][1].useguid():
+#             if comb[0][0] in s_dict:
+#                 s_dict.pop(comb[0][0])
+
+#     return s_dict
