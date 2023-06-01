@@ -1,145 +1,15 @@
-from pydna.amplicon import Amplicon
 from pydna.dseqrecord import Dseqrecord
 from pydna.design import primer_design
-from goldenhinges import OverhangsSelector
 from Bio.Restriction import *
-from pydna.assembly import Assembly
-import Bio.Seq as Seq
-from gg_graphs import *
+from golden_gate_auxiliar import *
+
+from pydna.amplicon import Amplicon
 from pydna.seqrecord import SeqRecord
 from pydna.amplify import pcr
+from goldenhinges import OverhangsSelector
+from pydna.assembly import Assembly
+import Bio.Seq as Seq
 
-
-# def GoldenGateDesigner(seqs: list, enzs: list, circular: bool = True) -> list:
-
-
-    # STEP 1
-    # list all sticky ends...
-
-def list_sticky_ends(seqs):
-    sticky_ends_dict = {} # com dicionario dá para ver sticky ends de cada sequencia (ou blunt)
-    sticky_ends = [] # só para registar diferentes tipos de stiky ends (sem repetir e não por ordem, nem blunts)
-    for sequence in seqs:
-        end_5 = sequence.seq.five_prime_end()
-        end_3 = sequence.seq.three_prime_end()
-        sticky_ends_dict[seqs.index(sequence)] = []
-        if end_5[0] == 'blunt':
-            sticky_ends_dict[seqs.index(sequence)].append((end_5[0])) # blunt
-        else:
-            sticky_ends_dict[seqs.index(sequence)].append((end_5[1])) # overhang
-
-            sticky_ends.append(end_5[1]) # será preciso saber a ponta 5 ou 3?
-        if end_3[0] == 'blunt':
-            sticky_ends_dict[seqs.index(sequence)].append((end_3[0])) # blunt
-        else:
-            sticky_ends_dict[seqs.index(sequence)].append((end_3[1])) # overhang
-            sticky_ends.append(end_3[1])
-
-    sticky_ends = list(set(sticky_ends))
-
-    return sticky_ends_dict
-
-# sticky_ends_dict = list_sticky_ends(seqs) ## limpar codigo!!
-
-
-# STEP 2
-# compatible enzymes (enzymes that do not cut within the sequences)
-
-def compatible_enzyme(seqs, enzs):
-
-    type_IIS_enzymes = [AcuI, AlwI, BaeI, BbsI, BbvI, BccI, BceAI, BcgI, BciVI, BcoDI, BfuAI, BmrI, BpmI, BpuEI, BsaI, BsaXI, BseRI, BsgI, BsmAI, BsmBI, BsmFI, BsmI, BspCNI, BspMI, BspQI, BsrDI, BsrI, BtgZI, BtsCI, BtsI, BtsIMutI, CspCI, EarI, EciI, Esp3I, FauI, FokI, HgaI, HphI, HpyAV, MboII, MlyI, MmeI, MnlI, NmeAIII, PaqCI, PleI, SapI, SfaNI]
-    
-    comp_enzymes = enzs.copy()
-    
-    for e in enzs:
-        if e not in type_IIS_enzymes: # only type IIs restriction enzymes
-            comp_enzymes.remove(e)
-        else:
-            for seq in seqs:
-                if e.search(seq.seq) != []:
-                    comp_enzymes.remove(e)
-                    break
-
-    if comp_enzymes == []:
-        raise ValueError('''No type IIs restriction enzymes available on this list
-                        that do not cut within the sequences''')
-    
-    return comp_enzymes
-
-# compatible_enzymes = compatible_enzyme(seqs, enzs) ### LIMPAR CODIGO
-
-
-# STEP 3 
-
-# design relevant primer if needed (add enzyme and comp sticky end)
-# FUNÇÃO AUXILIAR para loop 
-
-## função principal loop #####
-
-def design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular):
-
-
-    def design_primers(sequence, compatible_enzymes, f_ovhg, r_ovhg, ind):
-        if f_ovhg == 'blunt':
-            pass
-            # goldenhinge
-            # overhang_f = 
-        else:
-            overhang_f = SeqRecord(f_ovhg).reverse_complement().seq
-        if r_ovhg == 'blunt':
-            pass
-            # goldenhinge
-            # overhang_r = 
-        else:
-            overhang_r = SeqRecord(r_ovhg).reverse_complement().seq
-
-        fp = compatible_enzymes[0].site + 'a' + overhang_f+ sequence.forward_primer
-        rp = compatible_enzymes[0].site + 'a' + overhang_r + sequence.reverse_primer
-
-        pcr_prod = pcr(fp, rp, e)
-        new_seq = Dseqrecord(pcr_prod)
-
-        sticky_ends_dict[ind][0] = overhang_f
-        sticky_ends_dict[ind][1] = overhang_r
-
-        return new_seq
-
-    new_seqs = []
-
-    for ind in range(len(seqs)-1): # index da sequencia na lista (até ao penultimo)
-
-        if ind == 0:
-            if circular:
-                previous_sticky_end = sticky_ends_dict[len(seqs)-1][1]
-            else:
-                previous_sticky_end = 'blunt' # temporario -> mudar para None
-        else:
-            previous_sticky_end = sticky_ends_dict[ind-1][1]
-
-        if ind == len(seqs)-1:
-            if circular:
-                next_sticky_end = sticky_ends_dict[0][0]
-            else:
-                next_sticky_end = 'blunt' # temporario -> mudar para None
-        else:
-            next_sticky_end = sticky_ends_dict[ind+1][0] 
-
-
-        if sticky_ends_dict[ind][0] == 'blunt' and sticky_ends_dict[ind][1] == 'blunt':
-            new_seq = design_primers(seqs[ind], compatible_enzymes = compatible_enzymes, f_ovhg = previous_sticky_end, r_ovhg = next_sticky_end, ind=ind)
-
-            # new_seq = design_relevant_primer(seqs[ind], ovhg=next_sticky_end, end=5)
-            new_seqs.append(new_seq)
-
-        elif sticky_ends_dict[ind][0] != 'blunt' and sticky_ends_dict[ind][1] != 'blunt':
-            new_seqs.append(seqs[ind]) # não fazer nada porque já tem sticky ends (não é preciso enzima porque o design dos outros fragmentos vão coincidir)
-    
-        else:
-            raise ValueError('ERRO DESIGN PRIMER')
-
-    return new_seqs
-    
- 
 
 
 def GoldenGateDesigner(seqs: list, enzs: list, circular: bool = True) -> list:
@@ -150,7 +20,6 @@ def GoldenGateDesigner(seqs: list, enzs: list, circular: bool = True) -> list:
     # STEP 2:  compatible enzymes (enzymes that do not cut within the sequences)
     compatible_enzymes = compatible_enzyme(seqs, enzs) 
 
-
     # STEP 3: for loop over sequences
     # design relevant primer if needed (add enzyme and comp sticky end)
     new_seqs = design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular)
@@ -158,9 +27,6 @@ def GoldenGateDesigner(seqs: list, enzs: list, circular: bool = True) -> list:
     # STEP 4: Return a list with Dseqrecords and amplicons
 
     return new_seqs
-
-
-
 
 
 
@@ -195,13 +61,8 @@ if __name__ == '__main__':
 
     print()
 
-    from Bio.Seq import Seq
     from pydna.dseqrecord import Dseqrecord
-    from pydna.amplicon import Amplicon
-    from pydna.primer import Primer
-    from Bio.Restriction import BsaI, BsmBI, BamHI
-    from pydna.dseq import Dseq
-    from pydna.seq import Seq
+    from Bio.Restriction import *
 
 
     a = Dseqrecord("GGTCTCatgccctaaccccccctaacccacGAGACC")
@@ -235,52 +96,18 @@ if __name__ == '__main__':
     print('GoldenGateDesigner:')
     print(gg_designer)
     print()
-    # for i in gg_designer:
-    #     print(i.figure())
+    for i in gg_designer:
+        print()
+        print(i.figure())
 
     # print(gg_designer[0])
     e1,e2,e3  = gg_designer[0].cut(BsaI)
-    # print()
-    # print(e2.figure())
+    print()
+    print(e2.figure())
 
     nova_lista = [e2, a2,b2,c2,d2]
     print('GoldenGateAssembler:')
     print(GoldenGateAssembler(nova_lista))
-
-
-
-    # print(e.figure())
-
-    # overhang_f = SeqRecord('CAGT')
-    # overhang_r = 'GGCA'
-    # print(overhang_f.reverse_complement())
-
-    # fp = 'GGTCTC' + 'a' + overhang_f.seq + e.forward_primer
-    # rp = 'GGTCTC' + 'a' + overhang_r + e.reverse_primer
-
-    # e.forward_primer = fp
-    # e.reverse_primer = rp
-
-    # print(e.figure())
-    # print()
-
-    # print('PCR: \n')
-
-    # pcr_prod = pcr(fp, rp, e)
-    # new_e = Dseqrecord(pcr_prod)
-    # print(pcr_prod.figure())
-    # print()
-    # print(e.seq)
-    # print(pcr_prod.figure())
-    # print()
-    # print('new e\n')
-    # print(new_e.figure())
-
-    # e1,e2,e3  = new_e.cut(BsaI)
-
-    # print(e1.figure())
-    # print(e2.figure())
-
 
 
 
@@ -298,26 +125,21 @@ if __name__ == '__main__':
 
 
 # def list_sticky_ends(seqs):
-#     sticky_ends_dict = {} 
-#     sticky_ends = [] 
-#     for sequence in seqs:
-#         end_5 = sequence.seq.five_prime_end()
-#         end_3 = sequence.seq.three_prime_end()
-#         sticky_ends_dict[seqs.index(sequence)] = []
-#         if end_5[0] == 'blunt':
-#             sticky_ends_dict[seqs.index(sequence)].append((end_5[0])) # blunt
-#         else:
-#             sticky_ends_dict[seqs.index(sequence)].append((end_5[1])) # overhang
-#             sticky_ends.append(end_5[1])
-#         if end_3[0] == 'blunt':
-#             sticky_ends_dict[seqs.index(sequence)].append((end_3[0])) # blunt
-#         else:
-#             sticky_ends_dict[seqs.index(sequence)].append((end_3[1])) # overhang
-#             sticky_ends.append(end_3[1])
+    # sticky_ends_dict = {} 
+    # for sequence in seqs:
+    #     end_5 = sequence.seq.five_prime_end()
+    #     end_3 = sequence.seq.three_prime_end()
+    #     sticky_ends_dict[seqs.index(sequence)] = []
+    #     if end_5[0] == 'blunt':
+    #         sticky_ends_dict[seqs.index(sequence)].append((end_5[0])) # blunt
+    #     else:
+    #         sticky_ends_dict[seqs.index(sequence)].append((end_5[1])) # overhang
+    #     if end_3[0] == 'blunt':
+    #         sticky_ends_dict[seqs.index(sequence)].append((end_3[0])) # blunt
+    #     else:
+    #         sticky_ends_dict[seqs.index(sequence)].append((end_3[1])) # overhang
 
-#     sticky_ends = list(set(sticky_ends))
-
-#     return sticky_ends_dict
+    # return sticky_ends_dict
 
 
 # def compatible_enzyme(seqs, enzs):

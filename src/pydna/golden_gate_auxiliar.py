@@ -1,9 +1,143 @@
 import networkx as nx
 from itertools import permutations, combinations
 from pydna.dseqrecord import Dseqrecord
-from Bio.Restriction import BamHI, EcoRI, BsmBI, BpmI # BamHI cuts GGATCC /// EcoRI cuts CTTAAG
+from Bio.Restriction import *
 import io
+from pydna.seqrecord import SeqRecord
+from pydna.amplify import pcr
+from Bio.Restriction import AcuI, AlwI, BaeI, BbsI, BbvI, BccI, BceAI, BcgI, BciVI, BcoDI, BfuAI, BmrI, BpmI, BpuEI, BsaI, BsaXI, BseRI, BsgI, BsmAI, BsmBI, BsmFI, BsmI, BspCNI, BspMI, BspQI, BsrDI, BsrI, BtgZI, BtsCI, BtsI, BtsIMutI, CspCI, EarI, EciI, Esp3I, FauI, FokI, HgaI, HphI, HpyAV, MboII, MlyI, MmeI, MnlI, NmeAIII, PaqCI, PleI, SapI, SfaNI
 
+
+# DESIGN
+# STEP 1 -> list all sticky ends...
+
+def list_sticky_ends(seqs):
+    sticky_ends_dict = {} # com dicionario dá para ver sticky ends de cada sequencia (ou blunt)
+    sticky_ends = [] # só para registar diferentes tipos de stiky ends (sem repetir e não por ordem, nem blunts)
+    for sequence in seqs:
+        end_5 = sequence.seq.five_prime_end()
+        end_3 = sequence.seq.three_prime_end()
+        sticky_ends_dict[seqs.index(sequence)] = []
+        if end_5[0] == 'blunt':
+            sticky_ends_dict[seqs.index(sequence)].append((end_5[0])) # blunt
+        else:
+            sticky_ends_dict[seqs.index(sequence)].append((end_5[1])) # overhang
+
+            sticky_ends.append(end_5[1]) # será preciso saber a ponta 5 ou 3?
+        if end_3[0] == 'blunt':
+            sticky_ends_dict[seqs.index(sequence)].append((end_3[0])) # blunt
+        else:
+            sticky_ends_dict[seqs.index(sequence)].append((end_3[1])) # overhang
+            sticky_ends.append(end_3[1])
+
+    sticky_ends = list(set(sticky_ends))
+
+    return sticky_ends_dict
+
+# sticky_ends_dict = list_sticky_ends(seqs) ## limpar codigo!!
+
+
+# STEP 2
+# compatible enzymes (enzymes that do not cut within the sequences)
+
+def compatible_enzyme(seqs, enzs):
+
+    type_IIS_enzymes = [AcuI, AlwI, BaeI, BbsI, BbvI, BccI, BceAI, BcgI, BciVI, BcoDI, BfuAI, BmrI, BpmI, BpuEI, BsaI, BsaXI, BseRI, BsgI, BsmAI, BsmBI, BsmFI, BsmI, BspCNI, BspMI, BspQI, BsrDI, BsrI, BtgZI, BtsCI, BtsI, BtsIMutI, CspCI, EarI, EciI, Esp3I, FauI, FokI, HgaI, HphI, HpyAV, MboII, MlyI, MmeI, MnlI, NmeAIII, PaqCI, PleI, SapI, SfaNI]
+    
+    comp_enzymes = enzs.copy()
+    
+    for e in enzs:
+        if e not in type_IIS_enzymes: # only type IIs restriction enzymes
+            comp_enzymes.remove(e)
+        else:
+            for seq in seqs:
+                if e.search(seq.seq) != []:
+                    comp_enzymes.remove(e)
+                    break
+
+    if comp_enzymes == []:
+        raise ValueError('''No type IIs restriction enzymes available on this list
+                        that do not cut within the sequences''')
+    
+    return comp_enzymes
+
+# compatible_enzymes = compatible_enzyme(seqs, enzs) ### LIMPAR CODIGO
+
+
+# STEP 3 
+
+# design relevant primer if needed (add enzyme and comp sticky end)
+# FUNÇÃO AUXILIAR para loop 
+
+## função principal loop #####
+
+def design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular):
+
+
+    def design_primers(sequence, compatible_enzymes, f_ovhg, r_ovhg, ind):
+        if f_ovhg == 'blunt':
+            pass
+            # goldenhinge
+            # overhang_f = 
+        else:
+            overhang_f = SeqRecord(f_ovhg).reverse_complement().seq
+        if r_ovhg == 'blunt':
+            pass
+            # goldenhinge
+            # overhang_r = 
+        else:
+            overhang_r = SeqRecord(r_ovhg).reverse_complement().seq
+
+        fp = compatible_enzymes[0].site + 'a' + overhang_f+ sequence.forward_primer
+        rp = compatible_enzymes[0].site + 'a' + overhang_r + sequence.reverse_primer
+
+        pcr_prod = pcr(fp, rp, sequence)
+        new_seq = Dseqrecord(pcr_prod)
+
+        sticky_ends_dict[ind][0] = overhang_f
+        sticky_ends_dict[ind][1] = overhang_r
+
+        return new_seq
+
+    new_seqs = []
+
+    for ind in range(len(seqs)-1): # index da sequencia na lista (até ao penultimo)
+
+        if ind == 0:
+            if circular:
+                previous_sticky_end = sticky_ends_dict[len(seqs)-1][1]
+            else:
+                previous_sticky_end = 'blunt' # temporario -> mudar para None
+        else:
+            previous_sticky_end = sticky_ends_dict[ind-1][1]
+
+        if ind == len(seqs)-1:
+            if circular:
+                next_sticky_end = sticky_ends_dict[0][0]
+            else:
+                next_sticky_end = 'blunt' # temporario -> mudar para None
+        else:
+            next_sticky_end = sticky_ends_dict[ind+1][0] 
+
+
+        if sticky_ends_dict[ind][0] == 'blunt' and sticky_ends_dict[ind][1] == 'blunt':
+            new_seq = design_primers(seqs[ind], compatible_enzymes = compatible_enzymes, f_ovhg = previous_sticky_end, r_ovhg = next_sticky_end, ind=ind)
+
+            # new_seq = design_relevant_primer(seqs[ind], ovhg=next_sticky_end, end=5)
+            new_seqs.append(new_seq)
+
+        elif sticky_ends_dict[ind][0] != 'blunt' and sticky_ends_dict[ind][1] != 'blunt':
+            new_seqs.append(seqs[ind]) # não fazer nada porque já tem sticky ends (não é preciso enzima porque o design dos outros fragmentos vão coincidir)
+    
+        else:
+            raise ValueError('ERRO DESIGN PRIMER')
+
+    return new_seqs
+    
+ 
+
+## ASSEMBLY
+# STEP 1
 
 def graph_assembly(list_seqs: list):
     '''
@@ -39,6 +173,7 @@ def graph_assembly(list_seqs: list):
     else:
         raise ValueError('Assembly not possible with these sequences')
     
+# STEP 2
 
 def find_all_paths(graph):
     '''
@@ -98,6 +233,7 @@ def find_all_paths(graph):
 
     return all_paths
 
+# STEP 3
 
 def find_paths_seqs(paths, grafo):
     '''
@@ -156,6 +292,8 @@ def find_paths_seqs(paths, grafo):
     # return sequencias
 
     return dicio
+
+
 
 
 def to_graphviz(g):
@@ -221,85 +359,3 @@ if __name__ == '__main__':
         print(i)
         print(x.figure())
 
-
-# def graph_assembly(list_seqs: list):
-
-#     G = nx.DiGraph()
-    
-#     for comb in permutations(list_seqs, 2):
-#         seq1, seq2 = comb
-#         try: 
-#             seq1 + seq2
-#         except:
-#             continue
-#         else:
-#             node1 = list_seqs.index(seq1)+1
-#             node2 = list_seqs.index(seq2)+1
-#             G.add_node(node1, dseq=seq1)
-#             G.add_node(node2, dseq=seq2)
-#             G.add_edge(node1, node2)
-        
-#     if G.nodes:
-#         return G
-#     else:
-#         raise ValueError('Assembly not possible with these sequences')
-    
-
-# def find_all_paths(graph):
-
-#     def find_paths(start, end, path=[]):
-#         path = path + [start]
-#         if start == end and len(path) > 1:
-#             return [path]
-#         if start not in graph:
-#             return []
-#         paths = []
-#         for node in graph[start]:
-#             if node not in path or (node == end): 
-#                 newpaths = find_paths(node, end, path)
-#                 for newpath in newpaths:
-#                     paths.append(newpath)
-#         return paths
-
-#     all_paths = []
-#     for start in graph:
-#         for end in graph:
-#             if start != end:
-#                 paths = find_paths(start, end)
-#                 all_paths.extend(paths)
-
-#         # Add circular paths
-#         circular_paths = find_paths(start, start)
-#         all_paths.extend(circular_paths)
-
-#     return all_paths
-
-
-
-# def find_paths_seqs(paths, graph):
-#     sequences = {}
-#     for path in paths:
-#         new_seq = None
-#         circular = False 
-#         if len(set(path)) != len(path):
-#             circular = True
-#             path.pop()
-#         for i, seq in enumerate(path): 
-#             if i >= len(list(set(path))): 
-#                 break
-#             if new_seq is None:
-#                 new_seq = graph.nodes[seq]['dseq']
-#             else: 
-#                 new_seq += graph.nodes[seq]['dseq']
-#         if circular:
-#             new_seq = Dseqrecord(new_seq, circular=True)
-
-#         sequences[(tuple(path))] = new_seq
-
-#     s_dict = sequences.copy()
-#     for comb in combinations(sequences.items(), 2):
-#         if comb[0][1].useguid() == comb[1][1].useguid():
-#             if comb[0][0] in s_dict:
-#                 s_dict.pop(comb[0][0])
-
-#     return s_dict
