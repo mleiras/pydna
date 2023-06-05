@@ -13,16 +13,34 @@ import Bio.Seq as Seq
 
 
 def GoldenGateDesigner(seqs: list, enzs: list, circular: bool = True) -> list:
+    '''
+    GoldenGateDesigner is a function that receives a list of sequences and a list of enzymes and, using these, it must return a list of sequences with compatible primers or overhangs.
+
+    Parameters
+    ----------
+    seqs : list
+        list of sequences (order is important)
+    enzs : list
+        list of enzymes (order is important)
+    circular : bool, optional 
+        To define if intended final sequence is circular or not, by default True
+
+    Returns
+    -------
+    new_seqs: list
+        list with Dseqrecords and amplicons
+    '''
 
     # STEP 1:  list all sticky ends
-    sticky_ends_dict = list_sticky_ends(seqs)
+    sticky_ends_dict,  sticky_ends = list_sticky_ends(seqs)
+   
 
     # STEP 2:  compatible enzymes (enzymes that do not cut within the sequences)
     compatible_enzymes = compatible_enzyme(seqs, enzs) 
 
     # STEP 3: for loop over sequences
     # design relevant primer if needed (add enzyme and comp sticky end)
-    new_seqs = design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular)
+    new_seqs = design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular, sticky_ends)
    
     # STEP 4: Return a list with Dseqrecords and amplicons
 
@@ -30,27 +48,28 @@ def GoldenGateDesigner(seqs: list, enzs: list, circular: bool = True) -> list:
 
 
 
-def GoldenGateAssembler(seqs: list):
+def GoldenGateAssembler(seqs: list) -> dict:
     '''
-    GoldenGateAssembler is a function that receives a list of sequences (fragments) and tries all the possible assembles between them, returns a list/dictionary of all the possible sequences ligated (with only DNA ligase)
+    GoldenGateAssembler is a function that receives a list of sequences (fragments) and tries all the possible assembles between them, returns a dictionary of all the possible sequences ligated (with only DNA ligase).
 
     Parameters
     ----------
     seqs : list
-        fragments of DNA sequences
+        list of sequences (fragments of DNA)
 
     Returns
     -------
     dic_paths : dict
-        dictionary with the possible sequences ligated (keys are the order of the sequences; values are the dseqrecords of the sequences assembled)
+        dictionary with the possible sequences ligated (keys are the order of the sequences ligated; values are the dseqrecords of the sequences assembled)
     '''
-    # cria um grafo em que cada nodo é uma sequencia e cada edge representa a ligação entre sequencias (cada combinação possível numa lista de sequencias)
+
+    # STEP 1: creates a graph where each node is a sequence and each edge represents the link between sequences (each possible combination in a list of sequences)
     graph = graph_assembly(seqs)
     
-    # encontra todos os paths - encontra todas as combinações de sequencias possiveis 
+    # STEP 2: find allpaths (each combination of a possible assembled sequence)  
     paths = find_all_paths(graph)
 
-    # usando os paths como keys, retorna as sequencias formadas em cada uma destes (sem repetições)  
+    # STEP 3: using the paths as keys, returns all the assembled sequences for each of them (without repetitions) 
     dic_paths = find_paths_seqs(paths, graph)
     
     return dic_paths
@@ -78,39 +97,53 @@ if __name__ == '__main__':
     c1,c2,c3 = c.cut(BsaI)
     d1,d2,d3 = d.cut(BsaI)
 
-    lista_seqs = [a2,b2,c2,d2]
+    # lista_seqs = [a2,b2,c2,d2]
 
     # print('Sequencias: \n')
     # for i in lista_seqs:
     #     print(i.figure())
 
     e = primer_design(Dseqrecord("ccagttgctaacccttccttggtgttgaacaagatcgacgacatttcgttcgaaacttacgatg")) # AMPLICON
-    
+    f = primer_design(Dseqrecord("ccagttgctaacccttccttggtcgtttcgttcgaaacttacgatg")) # AMPLICON
+    g = primer_design(Dseqrecord("tatgctcgggggggaacaagatcgacgacatttcgttcgaaacttacgagggggcagtacagta")) # AMPLICON
 
-    lista_seqs2 = [a2,b2,c2,d2,e]
-
-    lista_seqs3 = [e, a2,b2,c2,d2]
+    # lista_seqs2 = [a2,b2,c2,d2,e]
+    # lista_seqs3 = [e,f, a2,b2,c2,d2,g]
+    lista_seqs3 = [e,f,g]
 
     gg_designer = GoldenGateDesigner(lista_seqs3, lista_enz)
     print()
     print('GoldenGateDesigner:')
     print(gg_designer)
     print()
+
+    nova_lista = []
+
     for i in gg_designer:
-        print()
-        print(i.figure())
+        # print(i)
+        if i.cut(BsaI): # se tiver primers BsaI
+            i1, i2, i3 = i.cut(BsaI)
+            nova_lista.append(i2)
+            # print(i2.figure())
+        else:
+            nova_lista.append(i)
+            # print(i.figure())
+
 
     # print(gg_designer[0])
-    e1,e2,e3  = gg_designer[0].cut(BsaI)
+    # e1,e2,e3  = gg_designer[0].cut(BsaI)
+    # print()
+    # print('Sequência 1 pós corte enzimatico: ')
+    # print(e2.figure())
+
+
+    # nova_lista = [e2, a2,b2,c2,d2]
+
     print()
-    print(e2.figure())
-
-    nova_lista = [e2, a2,b2,c2,d2]
     print('GoldenGateAssembler:')
-    print(GoldenGateAssembler(nova_lista))
-
-
-
+    gg_assembler = GoldenGateAssembler(nova_lista)
+    print(gg_assembler)
+    
 
 
 # def GoldenGateDesigner(seqs: list, enzs: list, circular: bool = True) -> list:

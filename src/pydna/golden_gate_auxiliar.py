@@ -5,7 +5,21 @@ from Bio.Restriction import *
 import io
 from pydna.seqrecord import SeqRecord
 from pydna.amplify import pcr
-from Bio.Restriction import AcuI, AlwI, BaeI, BbsI, BbvI, BccI, BceAI, BcgI, BciVI, BcoDI, BfuAI, BmrI, BpmI, BpuEI, BsaI, BsaXI, BseRI, BsgI, BsmAI, BsmBI, BsmFI, BsmI, BspCNI, BspMI, BspQI, BsrDI, BsrI, BtgZI, BtsCI, BtsI, BtsIMutI, CspCI, EarI, EciI, Esp3I, FauI, FokI, HgaI, HphI, HpyAV, MboII, MlyI, MmeI, MnlI, NmeAIII, PaqCI, PleI, SapI, SfaNI
+from Bio.Restriction import *
+import goldenhinges
+from goldenhinges import OverhangsSelector
+
+# selector = OverhangsSelector(
+#     gc_min=0.25,
+#     gc_max=0.5,
+#     differences=2,
+#     forbidden_overhangs=['TTCC'] #, 'ACTC']
+# )
+# overhangs = selector.generate_overhangs_set(n_overhangs=1)
+# print (overhangs)
+
+
+rb_iis = RestrictionBatch([AcuI, AlwI, BaeI, BbsI, BbvI, BccI, BceAI, BcgI, BciVI, BcoDI, BfuAI, BmrI, BpmI, BpuEI, BsaI, BsaXI, BseRI, BsgI, BsmAI, BsmBI, BsmFI, BsmI, BspCNI, BspMI, BspQI, BsrDI, BsrI, BtgZI, BtsCI, BtsI, BtsIMutI, CspCI, EarI, EciI, Esp3I, FauI, FokI, HgaI, HphI, HpyAV, MboII, MlyI, MmeI, MnlI, NmeAIII, PaqCI, PleI, SapI, SfaNI])
 
 
 # DESIGN
@@ -22,32 +36,27 @@ def list_sticky_ends(seqs):
             sticky_ends_dict[seqs.index(sequence)].append((end_5[0])) # blunt
         else:
             sticky_ends_dict[seqs.index(sequence)].append((end_5[1])) # overhang
-
-            sticky_ends.append(end_5[1]) # será preciso saber a ponta 5 ou 3?
+            sticky_ends.append(end_5[1].upper()) # será preciso saber a ponta 5 ou 3?
         if end_3[0] == 'blunt':
             sticky_ends_dict[seqs.index(sequence)].append((end_3[0])) # blunt
         else:
             sticky_ends_dict[seqs.index(sequence)].append((end_3[1])) # overhang
-            sticky_ends.append(end_3[1])
+            sticky_ends.append(end_3[1].upper())
 
     sticky_ends = list(set(sticky_ends))
 
-    return sticky_ends_dict
-
-# sticky_ends_dict = list_sticky_ends(seqs) ## limpar codigo!!
+    return sticky_ends_dict, sticky_ends
 
 
 # STEP 2
 # compatible enzymes (enzymes that do not cut within the sequences)
 
 def compatible_enzyme(seqs, enzs):
-
-    type_IIS_enzymes = [AcuI, AlwI, BaeI, BbsI, BbvI, BccI, BceAI, BcgI, BciVI, BcoDI, BfuAI, BmrI, BpmI, BpuEI, BsaI, BsaXI, BseRI, BsgI, BsmAI, BsmBI, BsmFI, BsmI, BspCNI, BspMI, BspQI, BsrDI, BsrI, BtgZI, BtsCI, BtsI, BtsIMutI, CspCI, EarI, EciI, Esp3I, FauI, FokI, HgaI, HphI, HpyAV, MboII, MlyI, MmeI, MnlI, NmeAIII, PaqCI, PleI, SapI, SfaNI]
     
     comp_enzymes = enzs.copy()
     
     for e in enzs:
-        if e not in type_IIS_enzymes: # only type IIs restriction enzymes
+        if e not in rb_iis: # only type IIs restriction enzymes
             comp_enzymes.remove(e)
         else:
             for seq in seqs:
@@ -61,30 +70,30 @@ def compatible_enzyme(seqs, enzs):
     
     return comp_enzymes
 
-# compatible_enzymes = compatible_enzyme(seqs, enzs) ### LIMPAR CODIGO
-
 
 # STEP 3 
 
 # design relevant primer if needed (add enzyme and comp sticky end)
-# FUNÇÃO AUXILIAR para loop 
 
-## função principal loop #####
-
-def design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular):
-
+def design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular, sticky_ends):
 
     def design_primers(sequence, compatible_enzymes, f_ovhg, r_ovhg, ind):
+        golden_hinges = OverhangsSelector(
+                    gc_min=0.25,
+                    gc_max=0.5,
+                    differences=2,
+                    forbidden_overhangs= sticky_ends)
+        
+        overhangs = golden_hinges.generate_overhangs_set(n_overhangs=2)
+        
         if f_ovhg == 'blunt':
-            pass
-            # goldenhinge
-            # overhang_f = 
+            overhang_f = overhangs[0]
+            sticky_ends.append(overhang_f)
         else:
             overhang_f = SeqRecord(f_ovhg).reverse_complement().seq
         if r_ovhg == 'blunt':
-            pass
-            # goldenhinge
-            # overhang_r = 
+            overhang_r = overhangs[1]
+            sticky_ends.append(overhang_r)   
         else:
             overhang_r = SeqRecord(r_ovhg).reverse_complement().seq
 
@@ -101,7 +110,7 @@ def design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular):
 
     new_seqs = []
 
-    for ind in range(len(seqs)-1): # index da sequencia na lista (até ao penultimo)
+    for ind in range(len(seqs)): # index da sequencia na lista (até ao penultimo)
 
         if ind == 0:
             if circular:
@@ -123,7 +132,6 @@ def design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular):
         if sticky_ends_dict[ind][0] == 'blunt' and sticky_ends_dict[ind][1] == 'blunt':
             new_seq = design_primers(seqs[ind], compatible_enzymes = compatible_enzymes, f_ovhg = previous_sticky_end, r_ovhg = next_sticky_end, ind=ind)
 
-            # new_seq = design_relevant_primer(seqs[ind], ovhg=next_sticky_end, end=5)
             new_seqs.append(new_seq)
 
         elif sticky_ends_dict[ind][0] != 'blunt' and sticky_ends_dict[ind][1] != 'blunt':
@@ -134,7 +142,7 @@ def design_seqs(seqs, sticky_ends_dict, compatible_enzymes, circular):
 
     return new_seqs
     
- 
+
 
 ## ASSEMBLY
 # STEP 1
@@ -276,20 +284,14 @@ def find_paths_seqs(paths, grafo):
     dicio = sequencias.copy()
 
     for comb in combinations(sequencias.items(), 2):
-        if comb[0][1].useguid() == comb[1][1].useguid():
+        if comb[0][1].circular and comb[1][1].circular:
+            if comb[0][1].cseguid() == comb[1][1].cseguid():
+                if comb[0][0] in dicio:
+                    dicio.pop(comb[0][0])
+        elif comb[0][1].useguid() == comb[1][1].useguid(): 
             if comb[0][0] in dicio:
                 dicio.pop(comb[0][0])
     
-    # se seguid não der:
-    #### AQUI: retorna 6 itens (circulares e não circulares, no fundo com a mesma sequência)
-    # repetidos = [] # retirar sequencias iguais
-    # for comb in combinations(sequencias.items(), 2):
-    #     if comb[0][1] == comb[1][1] and comb[1] not in repetidos:
-    #         repetidos.append(comb[1])
-    # for i in repetidos:
-    #     sequencias.pop(i[0])
-
-    # return sequencias
 
     return dicio
 
