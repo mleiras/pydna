@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-import sys
-sys.path.append('/home/monica/Documents/ano_1/2_semestre/projeto/pydna/pydna/')
+# # -*- coding: utf-8 -*-
+# import sys
+# sys.path.append('/home/monica/Documents/ano_1/2_semestre/projeto/pydna/pydna/')
 
 import pytest
-from pydna.dseqrecord import Dseqrecord
+from dseqrecord import Dseqrecord
 from golden_gate import *
 
 
