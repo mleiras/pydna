@@ -23,7 +23,7 @@ def _list_sticky_ends_(seqs):
             sticky_ends_dict[seqs.index(sequence)].append((end_5[0])) # blunt
         else:
             sticky_ends_dict[seqs.index(sequence)].append((end_5[1])) # overhang
-            sticky_ends.append(end_5[1].upper()) # será preciso saber a ponta 5 ou 3?
+            sticky_ends.append(end_5[1].upper()) 
         if end_3[0] == 'blunt':
             sticky_ends_dict[seqs.index(sequence)].append((end_3[0])) # blunt
         else:
@@ -331,7 +331,7 @@ def GoldenGateAssembler(seqs: list) -> dict:
     # STEP 1: creates a graph where each node is a sequence and each edge represents the link between sequences (each possible combination in a list of sequences)
     graph = _graph_assembly_(seqs)
     
-    # STEP 2: find allpaths (each combination of a possible assembled sequence)  
+    # STEP 2: find all paths (each combination of a possible assembled sequence)  
     paths = _find_all_paths_(graph)
 
     # STEP 3: using the paths as keys, returns all the assembled sequences for each of them (without repetitions) 
